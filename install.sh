@@ -30,6 +30,30 @@ prompt() {
   fi
 }
 
+# HTTP fetch helper — uses curl or wget, whichever is available
+fetch() {
+  if command -v curl &>/dev/null; then
+    curl -fsSL "$@"
+  elif command -v wget &>/dev/null; then
+    # Map common curl flags to wget equivalents
+    local url="" output=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        -o) output="$2"; shift 2 ;;
+        -s) shift ;; # wget is quiet by default with -q
+        *)  url="$1"; shift ;;
+      esac
+    done
+    if [[ -n "$output" ]]; then
+      wget -qO "$output" "$url"
+    else
+      wget -qO- "$url"
+    fi
+  else
+    err "Neither curl nor wget found. Please install one of them."
+  fi
+}
+
 # --- Preflight ---
 
 [[ "$(uname -s)" == "Linux" ]] || err "This installer only supports Linux."
@@ -42,7 +66,7 @@ echo ""
 
 if ! command -v docker &>/dev/null; then
   info "Installing Docker..."
-  curl -fsSL https://get.docker.com | sh
+  fetch https://get.docker.com | sh
   systemctl enable --now docker
   ok "Docker installed."
 else
@@ -75,7 +99,7 @@ cd "$INSTALL_DIR"
 # --- Download compose file ---
 
 info "Downloading docker-compose.yml..."
-curl -fsSL "$REPO_RAW/docker-compose.yml" -o docker-compose.yml
+fetch "$REPO_RAW/docker-compose.yml" -o docker-compose.yml
 ok "Downloaded."
 
 # --- Write .env ---
@@ -97,7 +121,7 @@ ok "Stack started."
 
 # --- Output summary ---
 
-VPS_IP=$(curl -s ifconfig.me 2>/dev/null || echo 'YOUR_VPS_IP')
+VPS_IP=$(fetch https://api.ipify.org 2>/dev/null || fetch https://icanhazip.com 2>/dev/null || echo 'YOUR_VPS_IP')
 
 echo ""
 echo -e "${GREEN}${BOLD}============================================${NC}"
