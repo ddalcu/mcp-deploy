@@ -1,0 +1,51 @@
+services:
+  traefik:
+    image: traefik:v3.3
+    container_name: mcp-deploy-traefik
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=web
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/letsencrypt
+    networks:
+      - web
+
+  mcp-server:
+    image: ${MCP_IMAGE:-ghcr.io/ddalcu/mcp-deploy:latest}
+    container_name: mcp-deploy-server
+    restart: unless-stopped
+    environment:
+      - DOMAIN=${DOMAIN}
+      - API_KEY=${API_KEY}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp-server.rule=Host(`mcp.${DOMAIN}`)"
+      - "traefik.http.routers.mcp-server.entrypoints=websecure"
+      - "traefik.http.routers.mcp-server.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mcp-server.loadbalancer.server.port=3000"
+    networks:
+      - web
+
+networks:
+  web:
+    name: web
+    driver: bridge
+
+volumes:
+  traefik-certs:
