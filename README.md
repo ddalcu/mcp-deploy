@@ -47,9 +47,22 @@ Create two DNS A records pointing to your VPS IP:
 
 ### 2. Install on Your VPS
 
+SSH into your server:
+
 ```bash
 ssh root@your-vps
+```
+
+Then run the installer with **curl**:
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | bash
+```
+
+Or with **wget**:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | bash
 ```
 
 The installer asks for two things: your **base domain** (e.g. `deploy.example.com`, without `*` or leading dot) and **email** (for Let's Encrypt). That's it. It generates an API key and starts everything.

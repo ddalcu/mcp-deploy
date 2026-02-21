@@ -3,6 +3,7 @@ set -euo pipefail
 
 # mcp-deploy installer
 # Usage: curl -fsSL https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | bash
+#    or: wget -qO- https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | bash
 
 INSTALL_DIR="/opt/mcp-deploy"
 REPO_RAW="https://raw.githubusercontent.com/ddalcu/mcp-deploy/main"
@@ -20,10 +21,10 @@ err()   { echo -e "${RED}[error]${NC} $1" >&2; exit 1; }
 prompt() {
   local var_name="$1" message="$2" default="${3:-}"
   if [[ -n "$default" ]]; then
-    read -rp "$(echo -e "${BOLD}${message}${NC} [${default}]: ")" value
+    read -rp "$(echo -e "${BOLD}${message}${NC} [${default}]: ")" value </dev/tty
     eval "$var_name=\"${value:-$default}\""
   else
-    read -rp "$(echo -e "${BOLD}${message}${NC}: ")" value
+    read -rp "$(echo -e "${BOLD}${message}${NC}: ")" value </dev/tty
     [[ -z "$value" ]] && err "Value required."
     eval "$var_name=\"$value\""
   fi
