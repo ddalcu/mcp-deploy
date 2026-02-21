@@ -89,10 +89,6 @@ EOF
 chmod 600 .env
 ok "Configuration saved to $INSTALL_DIR/.env"
 
-# --- Create network ---
-
-docker network create web 2>/dev/null || true
-
 # --- Start stack ---
 
 info "Starting mcp-deploy stack..."
