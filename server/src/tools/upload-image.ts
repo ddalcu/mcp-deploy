@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { config } from "../config.ts";
-import { resolveLocalImage } from "../docker.ts";
 
 export function registerUploadImageTool(server: McpServer) {
   server.registerTool(
@@ -10,6 +9,7 @@ export function registerUploadImageTool(server: McpServer) {
       description:
         "Upload a locally-built Docker image to the deploy server. " +
         "Use this BEFORE calling deploy when the image only exists on the user's machine (not in a registry). " +
+        "Always upload before deploying — even if the tag already exists on the server, the local image may have changed. " +
         "For static HTML/CSS/JS sites, use deploy-static instead — no Docker image needed. " +
         "Run the returned bash command, then call deploy.",
       inputSchema: z.object({
@@ -17,16 +17,6 @@ export function registerUploadImageTool(server: McpServer) {
       }),
     },
     async ({ image }) => {
-      const resolved = await resolveLocalImage(image);
-      if (resolved) {
-        return {
-          content: [{
-            type: "text" as const,
-            text: `Image "${image}" already exists on the server. No upload needed — you can call deploy directly.`,
-          }],
-        };
-      }
-
       const uploadUrl = `https://mcp.${config.domain}/upload`;
       return {
         content: [{
