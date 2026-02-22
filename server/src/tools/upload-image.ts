@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { config } from "../config.ts";
-import { imageExistsLocally } from "../docker.ts";
+import { resolveLocalImage } from "../docker.ts";
 
 export function registerUploadImageTool(server: McpServer) {
   server.registerTool(
@@ -17,8 +17,8 @@ export function registerUploadImageTool(server: McpServer) {
       }),
     },
     async ({ image }) => {
-      const alreadyExists = await imageExistsLocally(image);
-      if (alreadyExists) {
+      const resolved = await resolveLocalImage(image);
+      if (resolved) {
         return {
           content: [{
             type: "text" as const,

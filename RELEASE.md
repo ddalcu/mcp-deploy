@@ -6,11 +6,12 @@ Fixed a stream race condition that could cause image uploads to silently lose da
 
 - **Image upload data loss** — the `/upload` endpoint had a stream race condition where a `data` event listener put the request stream into flowing mode before `loadImage` could set up its pipeline, causing early chunks to be lost. Uploads would appear to succeed but produce truncated or corrupt images. Fixed by moving byte-counting into a `Transform` stream inside a single `pipeline()` call.
 - **Static deploy auth failure** — `deploy-static` tool returned `$MCP_API_KEY` placeholder in the curl command instead of the actual API key (unlike `upload-image` which correctly embedded it). LLMs couldn't authenticate the upload.
+- **Podman-uploaded images not found by deploy** — images saved by Podman are prefixed with `localhost/` (e.g., `localhost/myapp:latest`). The deploy tool now checks both `myapp:latest` and `localhost/myapp:latest` automatically.
 
 ## Improved
 
 - **Tool descriptions guide LLMs to the right tool** — each tool (`deploy`, `deploy-static`, `upload-image`) now cross-references the others with clear guidance: static files → `deploy-static`, local Docker image → `upload-image` then `deploy`, registry image → `deploy` directly.
-- **macOS tar compatibility** — `deploy-static` instructions now include `COPYFILE_DISABLE=1` to prevent macOS extended attributes from corrupting the archive.
+- **macOS tar compatibility** — `deploy-static` instructions now include `COPYFILE_DISABLE=1` and `--no-xattrs` to prevent macOS extended attributes from corrupting the archive. The server also strips `._*` AppleDouble files after extraction as a fallback.
 - **upload-image build path** — the platform rebuild example no longer assumes `.` as the build context, preventing LLMs from running `docker build` in the wrong directory.
 
 ## New

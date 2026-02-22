@@ -199,6 +199,14 @@ After editing `.env`, restart the stack:
 cd /opt/mcp-deploy && docker compose up -d
 ```
 
+## Upgrade
+
+```bash
+cd /opt/mcp-deploy && docker compose pull && docker compose up -d
+```
+
+This pulls the latest MCP server image and recreates the container. Your config (`.env`), deployed apps, and SSL certificates are not affected.
+
 ## Uninstall
 
 ```bash

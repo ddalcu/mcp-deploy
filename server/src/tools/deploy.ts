@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type Docker from "dockerode";
-import { docker, imageExistsLocally, pullImage, getExposedPort, MANAGED_LABEL, NAME_LABEL, NETWORK_NAME } from "../docker.ts";
+import { docker, resolveLocalImage, pullImage, getExposedPort, MANAGED_LABEL, NAME_LABEL, NETWORK_NAME } from "../docker.ts";
 import { traefikLabels } from "../labels.ts";
 import { config } from "../config.ts";
 import { appName } from "../validation.ts";
@@ -34,11 +34,12 @@ export function registerDeployTool(server: McpServer) {
     async ({ name, image, port: portInput, env, registry_auth, volumes, command }) => {
       const containerName = `mcp-deploy-${name}`;
 
-      // Use local image if available, otherwise pull
-      const isLocal = await imageExistsLocally(image);
-      if (!isLocal) {
+      // Use local image if available (also checks localhost/ prefix for podman-uploaded images), otherwise pull
+      let resolvedImage = await resolveLocalImage(image);
+      if (!resolvedImage) {
         try {
           await pullImage(image, registry_auth);
+          resolvedImage = image;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           return {
@@ -59,7 +60,7 @@ export function registerDeployTool(server: McpServer) {
       // Resolve port: use provided value, or auto-detect from image EXPOSE
       let port = portInput;
       if (!port) {
-        const exposed = await getExposedPort(image);
+        const exposed = await getExposedPort(resolvedImage);
         if (!exposed) {
           return {
             content: [{
@@ -96,7 +97,7 @@ export function registerDeployTool(server: McpServer) {
       }
 
       const createOptions: Record<string, unknown> = {
-        Image: image,
+        Image: resolvedImage,
         name: containerName,
         Labels: labels,
         Env: env ? Object.entries(env).map(([k, v]) => `${k}=${v}`) : [],

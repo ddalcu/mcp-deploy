@@ -25,13 +25,16 @@ export async function getManagedContainers(statusFilter?: string) {
   return docker.listContainers({ all: true, filters });
 }
 
-export async function imageExistsLocally(image: string): Promise<boolean> {
-  try {
-    await docker.getImage(image).inspect();
-    return true;
-  } catch {
-    return false;
+export async function resolveLocalImage(image: string): Promise<string | null> {
+  for (const candidate of [image, `localhost/${image}`]) {
+    try {
+      await docker.getImage(candidate).inspect();
+      return candidate;
+    } catch {
+      // not found under this name
+    }
   }
+  return null;
 }
 
 export async function pullImage(

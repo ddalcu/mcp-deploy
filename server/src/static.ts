@@ -1,5 +1,5 @@
 import type Docker from "dockerode";
-import { docker, imageExistsLocally, pullImage, MANAGED_LABEL, NAME_LABEL, LABEL_PREFIX, NETWORK_NAME } from "./docker.ts";
+import { docker, resolveLocalImage, pullImage, MANAGED_LABEL, NAME_LABEL, LABEL_PREFIX, NETWORK_NAME } from "./docker.ts";
 import { traefikLabels } from "./labels.ts";
 import { config } from "./config.ts";
 
@@ -10,7 +10,7 @@ export async function deployStaticSite(name: string, tarStream: NodeJS.ReadableS
   const containerName = `mcp-deploy-${name}`;
   const volumeName = `mcp-static-${name}`;
 
-  if (!await imageExistsLocally(STATIC_IMAGE)) {
+  if (!await resolveLocalImage(STATIC_IMAGE)) {
     await pullImage(STATIC_IMAGE);
   }
 
@@ -54,6 +54,10 @@ export async function deployStaticSite(name: string, tarStream: NodeJS.ReadableS
 
   await container.start();
   await container.putArchive(tarStream, { path: "/usr/share/nginx/html" });
+
+  // Remove macOS AppleDouble resource fork files (._*) that may leak through tar archives
+  const exec = await container.exec({ Cmd: ["find", "/usr/share/nginx/html", "-name", "._*", "-delete"] });
+  await exec.start({});
 
   return `https://${name}.${config.domain}`;
 }
