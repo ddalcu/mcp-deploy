@@ -2,12 +2,14 @@
 
 Deploy Docker containers to your VPS from Claude Code, Cursor, or any MCP client. One command to install, one sentence to deploy.
 
-```
-> You: "Deploy my-api"
-> MCP: Deployed my-api successfully.
-     URL: https://my-api.deploy.example.com
-     Status: running
-```
+**[Website](https://ddalcu.github.io/mcp-deploy/)** · **[Quick Start](#quick-start)** · **[MCP Tools](#mcp-tools)**
+
+<p>
+  <img src="docs/server-setup.png" alt="Server setup – one-command installer" width="49%">
+  <img src="docs/claude-code-usage.png" alt="Claude Code deploying a container" width="49%">
+</p>
+
+> **Demo video:** [Watch the full demo](https://ddalcu.github.io/mcp-deploy/) on the project website.
 
 ## How It Works
 
