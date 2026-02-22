@@ -55,9 +55,15 @@ export async function deployStaticSite(name: string, tarStream: NodeJS.ReadableS
   await container.start();
   await container.putArchive(tarStream, { path: "/usr/share/nginx/html" });
 
-  // Remove macOS AppleDouble resource fork files (._*) that may leak through tar archives
-  const exec = await container.exec({ Cmd: ["find", "/usr/share/nginx/html", "-name", "._*", "-delete"] });
-  await exec.start({});
+  // Clean up: remove macOS AppleDouble files, and create index.html symlink if missing
+  const cleanup = await container.exec({
+    Cmd: ["sh", "-c", [
+      "cd /usr/share/nginx/html",
+      "find . -name '._*' -delete",
+      "if [ ! -f index.html ]; then html=$(find . -maxdepth 1 -name '*.html' -type f); if [ $(echo \"$html\" | wc -l) -eq 1 ]; then ln -s \"$(basename $html)\" index.html; fi; fi",
+    ].join(" && ")],
+  });
+  await cleanup.start({});
 
   return `https://${name}.${config.domain}`;
 }

@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mcp-deploy — Deploy Docker containers from Claude Code</title>
+  <meta name="description" content="The most lightweight PaaS on the planet. Deploy Docker containers to your VPS from Claude Code, Cursor, or any MCP client. One command to install, one sentence to deploy.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-code: #1c2129;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --purple: #bc8cff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      background: var(--bg-code);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Nav */
+    .nav {
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 0;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .nav-links a { color: var(--text-muted); font-size: 0.9rem; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 5rem 0 3rem;
+    }
+
+    .hero-title {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+    }
+
+    .hero-tagline {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 615px;
+      margin: 0 auto 2rem;
+    }
+
+    .hero-install {
+      display: inline-flex;
+      align-items: center;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-install code {
+      padding: 0.75rem 1rem 0.75rem 1.5rem;
+      font-size: 0.9rem;
+      background: none;
+      user-select: all;
+    }
+
+    .copy-btn {
+      background: none;
+      border: none;
+      border-left: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      transition: color 0.15s;
+    }
+
+    .copy-btn:hover { color: var(--text); }
+
+    .hero-prompt {
+      display: inline-block;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 2rem;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 1rem;
+      margin-bottom: 3rem;
+    }
+
+    .hero-prompt .prompt-symbol { color: var(--green); }
+    .hero-prompt .prompt-text { color: var(--text); }
+    .hero-prompt .prompt-response { color: var(--text-muted); display: block; margin-top: 0.25rem; }
+
+    .hero-cta {
+      display: inline-block;
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 600;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      margin-bottom: 3rem;
+    }
+
+    .hero-cta:hover { background: var(--accent-hover); text-decoration: none; color: var(--bg); }
+
+    /* Video */
+    .video-section { padding-bottom: 4rem; }
+
+    .video-wrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--bg-card);
+    }
+
+    .video-wrap video {
+      width: 100%;
+      display: block;
+    }
+
+    .video-fallback {
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Section */
+    .section {
+      padding: 4rem 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-subtitle {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      max-width: 640px;
+    }
+
+    /* Screenshots */
+    .screenshots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .screenshot {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--bg-card);
+    }
+
+    .screenshot img {
+      width: 100%;
+      display: block;
+      cursor: pointer;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal-overlay img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 8px;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .screenshot-caption {
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* Architecture */
+    .arch-diagram {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2rem;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      white-space: pre;
+    }
+
+    .arch-diagram .diag-client { color: var(--accent); }
+    .arch-diagram .diag-server { color: var(--green); }
+    .arch-diagram .diag-apps { color: var(--purple); }
+    .arch-diagram .diag-line { color: var(--text-muted); }
+
+    .arch-bullets {
+      list-style: none;
+      margin-top: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .arch-bullets li {
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .arch-bullets strong { color: var(--accent); }
+
+    /* Steps */
+    .steps {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      counter-reset: step;
+    }
+
+    .step {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      counter-increment: step;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .step h3 {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .step p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .step pre {
+      margin-top: 0.75rem;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      white-space: pre;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      color: var(--text);
+    }
+
+    /* Uninstall */
+    .uninstall-note {
+      margin-top: 2rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .uninstall-cmd {
+      margin-top: 0.5rem;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      color: var(--text);
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* Tools table */
+    .tools-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .tools-table th,
+    .tools-table td {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tools-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .tools-table td:first-child {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .tools-table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--bg-card);
+    }
+
+    /* Features */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    .feature {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+    }
+
+    .feature-icon {
+      font-size: 1.25rem;
+      margin-bottom: 0.75rem;
+      color: var(--accent);
+    }
+
+    .feature h3 {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Comparison table */
+    .compare-table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--bg-card);
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .compare-table th,
+    .compare-table td {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .compare-table th {
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .compare-table th:last-child { color: var(--accent); }
+
+    .compare-table td:last-child { font-weight: 600; }
+
+    .compare-table tr:last-child td { border-bottom: none; }
+
+    .check { color: var(--green); }
+    .cross { color: #f85149; }
+
+    /* Footer */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      list-style: none;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero-title { font-size: 2rem; }
+      .hero-tagline { font-size: 1.05rem; }
+      .screenshots { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+      .arch-bullets { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <div class="container nav-inner">
+      <span class="nav-logo">mcp-deploy</span>
+      <ul class="nav-links">
+        <li><a href="#how-it-works">How it works</a></li>
+        <li><a href="#quick-start">Quick start</a></li>
+        <li><a href="#tools">Tools</a></li>
+        <li><a href="#features">Why mcp-deploy</a></li>
+        <li><a href="https://github.com/ddalcu/mcp-deploy"><i class="fa-brands fa-github"></i> GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <h1 class="hero-title">mcp-deploy</h1>
+      <p class="hero-tagline">The most lightweight PaaS on the planet. Deploy Docker containers to your VPS from any MCP client. No dashboard, no database, no bloat.</p>
+      <div class="hero-install">
+        <code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | bash</code>
+        <button class="copy-btn" id="copy-btn" title="Copy to clipboard"><i class="fa-regular fa-copy"></i></button>
+      </div>
+      <div class="hero-prompt">
+        <span class="prompt-symbol">&gt;</span>
+        <span class="prompt-text"> "Deploy my-api"</span>
+        <span class="prompt-response">Deployed my-api &ndash; https://my-api.deploy.example.com</span>
+      </div>
+      <br>
+      <a href="#quick-start" class="hero-cta">Get Started</a>
+    </div>
+  </section>
+
+  <!-- Demo Video -->
+  <section class="video-section">
+    <div class="container">
+      <div class="video-wrap">
+        <video controls muted playsinline preload="metadata" poster="movie-demo.png">
+          <source src="movie-demo.mov" type="video/quicktime">
+          <p class="video-fallback">Your browser doesn't support this video format. <a href="movie-demo.mov">Download the demo video</a> instead.</p>
+        </video>
+        <noscript><p class="video-fallback"><a href="movie-demo.mov">Download the demo video</a></p></noscript>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots -->
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">See it in action</h2>
+      <div class="screenshots">
+        <figure class="screenshot">
+          <img src="server-setup.png" alt="Server setup — one-command installer" loading="lazy">
+          <figcaption class="screenshot-caption">One-command installer sets up Traefik + MCP server on your VPS</figcaption>
+        </figure>
+        <figure class="screenshot">
+          <img src="claude-code-usage.png" alt="Claude Code deploying a container" loading="lazy">
+          <figcaption class="screenshot-caption">Say "deploy nginx:alpine as hello" and it's live with SSL</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="section" id="how-it-works">
+    <div class="container">
+      <h2 class="section-title">How it works</h2>
+      <div class="arch-diagram" role="img" aria-label="Architecture diagram"><span class="diag-client">┌─────────────────┐</span>       <span class="diag-line">HTTPS</span>        <span class="diag-server">┌─────────────────────────────────────┐</span>
+<span class="diag-client">│  Claude Code /  │</span> <span class="diag-line">──────────────────</span> <span class="diag-server">│          Your VPS                   │</span>
+<span class="diag-client">│  Cursor / any   │</span>   <span class="diag-line">MCP Protocol</span>     <span class="diag-server">│                                     │</span>
+<span class="diag-client">│  MCP Client     │</span>                    <span class="diag-server">│  Traefik ──→ MCP Server (:3000)     │</span>
+<span class="diag-client">└─────────────────┘</span>                    <span class="diag-server">│     │                               │</span>
+                                       <span class="diag-server">│</span>     <span class="diag-apps">├──→ my-app.deploy.example.com</span>  <span class="diag-server">│</span>
+                                       <span class="diag-server">│</span>     <span class="diag-apps">├──→ my-api.deploy.example.com</span>  <span class="diag-server">│</span>
+                                       <span class="diag-server">│</span>     <span class="diag-apps">└──→ blog.deploy.example.com</span>    <span class="diag-server">│</span>
+                                       <span class="diag-server">└─────────────────────────────────────┘</span></div>
+      <ul class="arch-bullets">
+        <li><strong>Traefik</strong> handles SSL (automatic per-subdomain Let's Encrypt certs) and routes each subdomain to the right container</li>
+        <li><strong>MCP Server</strong> receives tool calls over Streamable HTTP and manages Docker containers</li>
+        <li><strong>No database</strong> &ndash; Docker is the source of truth. No JSON state files, no sync issues</li>
+        <li><strong>No registry required</strong> &ndash; push images directly from your machine, or pull from GHCR / DockerHub</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Quick Start -->
+  <section class="section" id="quick-start">
+    <div class="container">
+      <h2 class="section-title">Quick start</h2>
+      <p class="section-subtitle">Four steps from zero to deploying containers with natural language. Need a VPS? <a href="https://hetzner.cloud/?ref=4bBAKWKbTCIO">Hetzner gives you $20 free credit</a> &ndash; a CX22 is more than enough.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Set up DNS</h3>
+          <p>Create two A records pointing to your VPS IP: <code>deploy.example.com</code> and <code>*.deploy.example.com</code>.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Install on your VPS</h3>
+          <p>SSH in and run the one-line installer. It sets up Traefik, the MCP server, and generates your API key.</p>
+          <pre>curl -fsSL https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | bash</pre>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Add to your MCP client</h3>
+          <p>Paste the config the installer outputs into Claude Code, Cursor, or any MCP client.</p>
+          <pre>claude mcp add deploy https://mcp.deploy.example.com/mcp \
+  -t http -s user \
+  -H "Authorization: Bearer YOUR_API_KEY"</pre>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <h3>Deploy something</h3>
+          <p>Open any project and say <em>"Deploy nginx:alpine as hello"</em>. Visit the URL &ndash; it's live with SSL.</p>
+        </div>
+      </div>
+      <p class="uninstall-note">Don't like it? Uninstalling is just as simple:</p>
+      <pre class="uninstall-cmd">cd /opt/mcp-deploy && docker compose down -v && rm -rf /opt/mcp-deploy && docker network rm web</pre>
+    </div>
+  </section>
+
+  <!-- MCP Tools -->
+  <section class="section" id="tools">
+    <div class="container">
+      <h2 class="section-title">MCP Tools</h2>
+      <p class="section-subtitle">Nine tools, available to any MCP client. All managed through natural language.</p>
+      <div class="tools-table-wrap">
+        <table class="tools-table">
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>deploy</td><td>Deploy or redeploy a Docker image with automatic SSL and subdomain routing</td></tr>
+            <tr><td>deploy-static</td><td>Deploy a static HTML site with automatic SSL and subdomain routing</td></tr>
+            <tr><td>list</td><td>List all managed deployments</td></tr>
+            <tr><td>logs</td><td>Get container logs</td></tr>
+            <tr><td>status</td><td>Detailed app info &ndash; CPU, memory, uptime, restart count</td></tr>
+            <tr><td>stop</td><td>Stop a running app (container preserved)</td></tr>
+            <tr><td>start</td><td>Start a stopped app</td></tr>
+            <tr><td>remove</td><td>Permanently remove an app and its container</td></tr>
+            <tr><td>upload-image</td><td>Push a locally-built Docker image directly to your VPS &ndash; no registry needed</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section" id="features">
+    <div class="container">
+      <h2 class="section-title">Why mcp-deploy?</h2>
+      <p class="section-subtitle">Coolify, Dokku, CapRover, Dokploy &ndash; great tools, but they all come with dashboards, databases, and complexity you don't need. This is the opposite.</p>
+      <div class="features-grid">
+        <div class="feature">
+          <div class="feature-icon"><i class="fa-solid fa-lock"></i></div>
+          <h3>Automatic SSL</h3>
+          <p>Every app gets its own Let's Encrypt certificate. No config files, no cert managers, no renewals to think about.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon"><i class="fa-solid fa-upload"></i></div>
+          <h3>No registry required</h3>
+          <p>Push images straight from your machine. Skip the DockerHub/GHCR dance when you just want to ship.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon"><i class="fa-solid fa-feather"></i></div>
+          <h3>No database</h3>
+          <p>Docker IS the database. Two files, two containers, zero state to corrupt. It cannot get any simpler than this.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon"><i class="fa-solid fa-robot"></i></div>
+          <h3>AI-native (MCP)</h3>
+          <p>Built for AI from day one. Not a web UI with an API bolted on &ndash; your AI talks to it directly.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon"><i class="fa-solid fa-bolt"></i></div>
+          <h3>One-line install</h3>
+          <p>One curl, two questions, done. No 15-minute setup wizards, no provisioning steps, no prerequisites.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon"><i class="fa-solid fa-server"></i></div>
+          <h3>Multi-server</h3>
+          <p>Install on as many VPS servers as you want. Address them by name: <em>"deploy to staging"</em>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison -->
+  <section class="section" id="compare">
+    <div class="container">
+      <h2 class="section-title">Ditch the heavyweight</h2>
+      <p class="section-subtitle">Other platforms do more &ndash; and that's the problem. More moving parts, more things to break, more to maintain. mcp-deploy does exactly what you need and nothing else.</p>
+      <div class="compare-table-wrap">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>MCP Docker servers</th>
+              <th>Self-hosted PaaS</th>
+              <th>mcp-deploy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Remote VPS deployment</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>MCP protocol (AI-native)</td>
+              <td class="check">Yes</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Automatic SSL + subdomains</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>No database / minimal</td>
+              <td>&ndash;</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Direct image push</td>
+              <td class="cross">No</td>
+              <td>Some</td>
+              <td class="check">Yes</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <ul class="footer-links">
+        <li><a href="https://github.com/ddalcu/mcp-deploy"><i class="fa-brands fa-github"></i> GitHub</a></li>
+        <li><a href="https://github.com/ddalcu/mcp-deploy#quick-start"><i class="fa-solid fa-book"></i> Docs</a></li>
+        <li><a href="https://github.com/ddalcu/mcp-deploy/issues"><i class="fa-solid fa-circle-exclamation"></i> Issues</a></li>
+      </ul>
+      <p>MIT License &copy; 2025 mcp-deploy</p>
+    </div>
+  </footer>
+
+  <!-- Image Modal -->
+  <div class="modal-overlay" id="modal">
+    <img id="modal-img" src="" alt="">
+  </div>
+
+  <script>
+    const modal = document.getElementById('modal');
+    const modalImg = document.getElementById('modal-img');
+
+    document.querySelectorAll('.screenshot img').forEach(function(img) {
+      img.addEventListener('click', function() {
+        modalImg.src = this.src;
+        modalImg.alt = this.alt;
+        modal.classList.add('active');
+      });
+    });
+
+    modal.addEventListener('click', function() {
+      modal.classList.remove('active');
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') modal.classList.remove('active');
+    });
+
+    document.getElementById('copy-btn').addEventListener('click', function() {
+      var text = document.getElementById('install-cmd').textContent;
+      var btn = this;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+        setTimeout(function() { btn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
+      });
+    });
+  </script>
+
+</body>
+</html>

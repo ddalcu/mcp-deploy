@@ -13,6 +13,7 @@ Fixed a stream race condition that could cause image uploads to silently lose da
 
 - **Tool descriptions guide LLMs to the right tool** — each tool (`deploy`, `deploy-static`, `upload-image`) now cross-references the others with clear guidance: static files → `deploy-static`, local Docker image → `upload-image` then `deploy`, registry image → `deploy` directly.
 - **macOS tar compatibility** — `deploy-static` instructions now include `COPYFILE_DISABLE=1` and `--no-xattrs` to prevent macOS extended attributes from corrupting the archive. The server also strips `._*` AppleDouble files after extraction as a fallback.
+- **Static sites auto-link index.html** — if an uploaded archive has no `index.html` but contains exactly one `.html` file, the server creates a symlink so the site works at the root URL.
 - **upload-image build path** — the platform rebuild example no longer assumes `.` as the build context, preventing LLMs from running `docker build` in the wrong directory.
 
 ## New
