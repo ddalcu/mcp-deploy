@@ -75,16 +75,7 @@ app.post("/upload", requireAuth, (req, res) => {
     return;
   }
 
-  let received = 0;
-  req.on("data", (chunk: Buffer) => {
-    received += chunk.length;
-    if (received > MAX_UPLOAD_BYTES) {
-      req.destroy();
-      res.status(413).json({ error: `Upload exceeds ${MAX_UPLOAD_BYTES} byte limit` });
-    }
-  });
-
-  loadImage(req)
+  loadImage(req, MAX_UPLOAD_BYTES)
     .then((result) => {
       if (!res.headersSent) {
         res.json({ status: "ok", message: result.trim() });
@@ -93,7 +84,8 @@ app.post("/upload", requireAuth, (req, res) => {
     .catch((err) => {
       if (!res.headersSent) {
         const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(500).json({ error: message });
+        const status = message.includes("byte limit") ? 413 : 500;
+        res.status(status).json({ error: message });
       }
     });
 });

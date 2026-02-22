@@ -4,7 +4,8 @@
   "description": "MCP server for deploying Docker containers to a VPS",
   "type": "module",
   "scripts": {
-    "start": "node src/index.ts"
+    "start": "node src/index.ts",
+    "test": "node --experimental-test-module-mocks --test test/**/*.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",

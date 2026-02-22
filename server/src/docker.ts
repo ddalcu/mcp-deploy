@@ -3,6 +3,7 @@ import { createReadStream, createWriteStream } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Transform, type TransformCallback } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
 export const docker = new Docker({ socketPath: "/var/run/docker.sock" });
@@ -63,13 +64,25 @@ export async function getExposedPort(image: string): Promise<number | null> {
   return ports.length === 1 ? ports[0] : null;
 }
 
-export async function loadImage(tarStream: NodeJS.ReadableStream): Promise<string> {
+export async function loadImage(tarStream: NodeJS.ReadableStream, maxBytes: number): Promise<string> {
   const tmpDir = await mkdtemp(join(tmpdir(), "mcp-upload-"));
 
   try {
-    // Buffer to disk first to avoid streaming corruption on slow connections
     const tarPath = join(tmpDir, "upload.tar");
-    await pipeline(tarStream, createWriteStream(tarPath));
+
+    let received = 0;
+    const meter = new Transform({
+      transform(chunk: Buffer, _encoding: string, callback: TransformCallback) {
+        received += chunk.length;
+        if (received > maxBytes) {
+          callback(new Error(`Upload exceeds ${maxBytes} byte limit`));
+        } else {
+          callback(null, chunk);
+        }
+      },
+    });
+
+    await pipeline(tarStream, meter, createWriteStream(tarPath));
 
     const stream = await docker.loadImage(createReadStream(tarPath));
     return await new Promise<string>((resolve, reject) => {

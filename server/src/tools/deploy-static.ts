@@ -7,7 +7,11 @@ export function registerDeployStaticTool(server: McpServer) {
   server.registerTool(
     "deploy-static",
     {
-      description: "Deploy a static HTML site with automatic SSL and subdomain routing. Returns the upload endpoint — use curl to upload a tar.gz of the site files.",
+      description:
+        "Deploy static files (HTML, CSS, JS) as a website with automatic SSL. " +
+        "Use this for static sites — no Docker image needed. " +
+        "For Docker-based apps, use the deploy tool instead. " +
+        "Returns curl commands to upload and deploy the files.",
       inputSchema: z.object({ name: appName }),
     },
     async ({ name }) => {
@@ -22,11 +26,12 @@ export function registerDeployStaticTool(server: McpServer) {
               `To deploy static files to ${siteUrl}:`,
               ``,
               `1. Create a tar.gz of your site folder:`,
-              `   tar -czf /tmp/${name}.tar.gz -C ./your-site-folder .`,
+              `   COPYFILE_DISABLE=1 tar -czf /tmp/${name}.tar.gz -C /path/to/site-folder .`,
+              `   (COPYFILE_DISABLE=1 prevents macOS extended attributes from breaking the archive)`,
               ``,
               `2. Upload to the deploy endpoint:`,
               `   curl -X POST ${uploadUrl} \\`,
-              `     -H "Authorization: Bearer $MCP_API_KEY" \\`,
+              `     -H "Authorization: Bearer ${config.apiKey}" \\`,
               `     -H "Content-Type: application/gzip" \\`,
               `     --data-binary @/tmp/${name}.tar.gz`,
               ``,

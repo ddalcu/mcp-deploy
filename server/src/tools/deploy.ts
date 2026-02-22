@@ -10,7 +10,11 @@ export function registerDeployTool(server: McpServer) {
   server.registerTool(
     "deploy",
     {
-      description: "Deploy a Docker image as a web app with automatic SSL and subdomain routing. Redeploys if the app already exists.",
+      description:
+        "Deploy a Docker image as a web app with automatic SSL and subdomain routing. Redeploys if the app already exists. " +
+        "For public/registry images, call this directly. " +
+        "For locally-built images, call upload-image first to transfer the image to the server. " +
+        "For static HTML/CSS/JS sites, use deploy-static instead — simpler, no Docker image needed.",
       inputSchema: z.object({
         name: appName,
         image: z.string().min(1).describe("Docker image to deploy (e.g. nginx:alpine, ghcr.io/user/repo:tag)"),
