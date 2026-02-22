@@ -34,6 +34,8 @@ Deploy Docker containers to your VPS from Claude Code, Cursor, or any MCP client
 
 You need a Linux VPS with a public IP. Any provider works — if you don't have one yet, [Hetzner gives you a $20 credit to get started](https://hetzner.cloud/?ref=4bBAKWKbTCIO). A CX22 (2 vCPU, 4 GB RAM) is more than enough.
 
+> **Note:** Proxmox/LXC Note: If you want to run this on Proxmox/LXC, make sure its in a VM, not LXC.
+
 ### 1. Set Up DNS
 
 Create two DNS A records pointing to your VPS IP:
@@ -71,21 +73,15 @@ The installer asks for two things: your **base domain** (e.g. `deploy.example.co
 
 Copy the config the installer outputs into your MCP client settings.
 
-**Claude Code** — add to `~/.claude.json`:
+**Claude Code:**
 
-```json
-{
-  "mcpServers": {
-    "deploy-prod": {
-      "type": "streamable-http",
-      "url": "https://mcp.deploy.example.com/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}
+```bash
+claude mcp add deploy https://mcp.deploy.example.com/mcp \
+  -t http -s user \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
+
+The `-s user` flag makes it available in all projects. Restart Claude Code after adding.
 
 ### 4. Deploy Something
 
@@ -260,6 +256,22 @@ docker build -t mcp-deploy:dev ./server
 cp .env.example .env  # fill in your values
 MCP_IMAGE=mcp-deploy:dev docker compose up -d
 ```
+
+## How It Compares
+
+|  | MCP Docker servers | Self-hosted PaaS | **mcp-deploy** |
+|---|---|---|---|
+| Remote VPS deployment | No | Yes | **Yes** |
+| MCP protocol (AI-native) | Yes | No | **Yes** |
+| Automatic SSL + subdomains | No | Yes | **Yes** |
+| No database / minimal | N/A | No (most have DBs) | **Yes** |
+| Direct image push | No | Some | **Yes** |
+
+**MCP Docker servers** like [mcp-server-docker](https://github.com/ckreiling/mcp-server-docker) and [docker-mcp](https://github.com/QuantGeekDev/docker-mcp) let AI manage Docker locally, but don't deploy to remote servers.
+
+**Self-hosted PaaS** platforms like [Coolify](https://github.com/coollabsio/coolify), [Dokku](https://github.com/dokku/dokku), [CapRover](https://github.com/caprover/caprover), and [Dokploy](https://github.com/Dokploy/dokploy) deploy containers to your VPS with web UIs or CLI, but have no MCP integration.
+
+mcp-deploy combines MCP-native AI control with remote PaaS deployment and zero-database minimalism.
 
 ## Contributing
 

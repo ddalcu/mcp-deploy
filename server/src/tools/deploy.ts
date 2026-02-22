@@ -33,7 +33,23 @@ export function registerDeployTool(server: McpServer) {
       // Use local image if available, otherwise pull
       const isLocal = await imageExistsLocally(image);
       if (!isLocal) {
-        await pullImage(image, registry_auth);
+        try {
+          await pullImage(image, registry_auth);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return {
+            content: [{
+              type: "text" as const,
+              text: [
+                `FAILED: Image "${image}" is not on this server and could not be pulled from a registry.`,
+                `Error: ${msg}`,
+                "",
+                "If this is a locally-built image, call the upload-image tool first to get the upload command, then retry deploy.",
+              ].join("\n"),
+            }],
+            isError: true,
+          };
+        }
       }
 
       // Resolve port: use provided value, or auto-detect from image EXPOSE

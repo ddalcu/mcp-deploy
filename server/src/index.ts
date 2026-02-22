@@ -15,6 +15,7 @@ import { registerStopTool } from "./tools/stop.ts";
 import { registerStartTool } from "./tools/start.ts";
 import { registerRemoveTool } from "./tools/remove.ts";
 import { registerStatusTool } from "./tools/status.ts";
+import { registerUploadImageTool } from "./tools/upload-image.ts";
 
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
 
@@ -32,6 +33,7 @@ function createServer(): McpServer {
   registerStartTool(server);
   registerRemoveTool(server);
   registerStatusTool(server);
+  registerUploadImageTool(server);
 
   return server;
 }

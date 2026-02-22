@@ -1,4 +1,9 @@
 import Docker from "dockerode";
+import { createReadStream, createWriteStream } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pipeline } from "node:stream/promises";
 
 export const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 
@@ -59,11 +64,21 @@ export async function getExposedPort(image: string): Promise<number | null> {
 }
 
 export async function loadImage(tarStream: NodeJS.ReadableStream): Promise<string> {
-  const stream = await docker.loadImage(tarStream);
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    stream.on("data", (chunk: Buffer) => chunks.push(chunk));
-    stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
-    stream.on("error", reject);
-  });
+  const tmpDir = await mkdtemp(join(tmpdir(), "mcp-upload-"));
+
+  try {
+    // Buffer to disk first to avoid streaming corruption on slow connections
+    const tarPath = join(tmpDir, "upload.tar");
+    await pipeline(tarStream, createWriteStream(tarPath));
+
+    const stream = await docker.loadImage(createReadStream(tarPath));
+    return await new Promise<string>((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+      stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+      stream.on("error", reject);
+    });
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
 }
