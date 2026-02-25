@@ -4,7 +4,7 @@
 
 <h1 align="center">mcp-deploy</h1>
 
-Deploy Docker containers to your VPS from Claude Code, Cursor, or any MCP client. One command to install, one sentence to deploy.
+The most lightweight PaaS on the planet. Deploy Docker containers to your VPS from any MCP client. No database, no bloat – just deploy.
 
 **[Website](https://ddalcu.github.io/mcp-deploy/)** · **[Quick Start](#quick-start)** · **[MCP Tools](#mcp-tools)** · **[REST API](#rest-api)**
 
@@ -14,6 +14,14 @@ Deploy Docker containers to your VPS from Claude Code, Cursor, or any MCP client
 </p>
 
 > **Demo video:** [Watch the full demo](https://ddalcu.github.io/mcp-deploy/) on the project website.
+
+### Install
+
+Run this on any Linux VPS — installs everything in under a minute:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | bash
+```
 
 ---
 
@@ -66,9 +74,7 @@ Deploy Docker containers to your VPS from Claude Code, Cursor, or any MCP client
 
 ## Quick Start
 
-### 0. Get a VPS
-
-You need a Linux VPS with a public IP. Any provider works — if you don't have one yet, [Hetzner gives you a $20 credit to get started](https://hetzner.cloud/?ref=4bBAKWKbTCIO). A CX22 (2 vCPU, 4 GB RAM) is more than enough.
+You need a Linux VPS with a public IP. Any provider works — if you don't have one yet, [Hetzner gives you a $20 credit](https://hetzner.cloud/?ref=4bBAKWKbTCIO). 
 
 > **Note:** Proxmox/LXC Note: If you want to run this on Proxmox/LXC, make sure its in a VM, not LXC.
 
@@ -85,13 +91,7 @@ Create two DNS A records pointing to your VPS IP:
 
 ### 2. Install on Your VPS
 
-SSH into your server:
-
-```bash
-ssh root@your-vps
-```
-
-Then run the installer with **curl**:
+Run the installer with **curl**:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | bash
@@ -104,6 +104,36 @@ wget -qO- https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | 
 ```
 
 The installer asks for two things: your **base domain** (e.g. `deploy.example.com`, without `*` or leading dot) and **email** (for Let's Encrypt). That's it. It generates an API key and starts everything.
+
+#### Alternative: Docker Compose Install
+
+For users who already have Docker and prefer a non-interactive setup:
+
+1. Create the directory and download the compose file:
+
+   ```bash
+   mkdir -p /opt/mcp-deploy && cd /opt/mcp-deploy
+   curl -fsSL https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/docker-compose.yml -o docker-compose.yml
+   ```
+
+2. Create a `.env` file:
+
+   ```bash
+   cat > .env <<EOF
+   DOMAIN=deploy.example.com
+   ACME_EMAIL=you@example.com
+   API_KEY=$(openssl rand -hex 32)
+   EOF
+   chmod 600 .env
+   ```
+
+3. Start the stack:
+
+   ```bash
+   docker network create web 2>/dev/null; docker compose up -d
+   ```
+
+> **Optional:** Set `MCP_TRAEFIK=false` and `DIRECT_PORT=8080` in `.env` to change how the MCP server is exposed. See [Exposure Modes](#mcp-server-exposure-modes) for details.
 
 ### 3. Add to Your MCP Client
 
@@ -368,6 +398,10 @@ If you prefer not to use a registry, you can upload the image directly. This req
 ## Web Dashboard
 
 The server includes a built-in web dashboard at the root URL (`/`). It shows all deployed apps with their status, resource usage, and logs — no MCP client required.
+
+<p align="center">
+  <img src="docs/screenshot.png" alt="Web dashboard showing deployed apps with status, logs, and resource usage" width="80%">
+</p>
 
 - **Auth**: enter your API key to log in (saved in `localStorage`)
 - **App table**: name, status (green/red badge), image, URL, CPU, memory
