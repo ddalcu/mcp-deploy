@@ -12,7 +12,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
 
   if (!token || !constantTimeEqual(token, config.apiKey)) {
-    res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({ error: "Unauthorized: missing or invalid API key. Set the Authorization header to 'Bearer YOUR_API_KEY'." });
     return;
   }
 

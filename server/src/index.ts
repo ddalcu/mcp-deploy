@@ -148,6 +148,13 @@ app.get("/", (_req, res) => {
   res.type("html").send(getDashboardHtml());
 });
 
+// Catch-all: return JSON 404 so MCP clients (which probe OAuth endpoints like
+// /register, /.well-known/oauth-authorization-server) get a parseable response
+// instead of Express's default HTML error page.
+app.use((_req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
 app.listen(config.port, () => {
   console.log(`mcp-deploy listening on port ${config.port}`);
 });
