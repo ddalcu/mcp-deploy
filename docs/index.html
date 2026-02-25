@@ -27,6 +27,7 @@
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;
+      overflow-x: hidden;
     }
 
     a { color: var(--accent); text-decoration: none; }
@@ -46,6 +47,19 @@
       padding: 0 1.5rem;
     }
 
+    /* Background canvas */
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .page-content {
+      position: relative;
+      z-index: 1;
+    }
+
     /* Nav */
     .nav {
       border-bottom: 1px solid var(--border);
@@ -59,9 +73,17 @@
     }
 
     .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       font-weight: 700;
       font-size: 1.1rem;
       color: var(--text);
+    }
+
+    .nav-logo img {
+      height: 28px;
+      width: auto;
     }
 
     .nav-links {
@@ -471,23 +493,39 @@
     @media (max-width: 768px) {
       .hero-title { font-size: 2rem; }
       .hero-tagline { font-size: 1.05rem; }
+      .hero-install { max-width: 100%; }
+      .hero-install code { font-size: 0.75rem; padding: 0.75rem 0.5rem 0.75rem 0.75rem; word-break: break-all; white-space: normal; }
+      .hero-prompt { padding: 0.75rem 1rem; font-size: 0.85rem; max-width: 100%; word-break: break-word; }
       .screenshots { grid-template-columns: 1fr; }
       .features-grid { grid-template-columns: 1fr; }
       .arch-bullets { grid-template-columns: 1fr; }
+      .arch-diagram { font-size: 0.65rem; padding: 1rem; }
       .nav-links { display: none; }
+      .step pre { font-size: 0.7rem; white-space: pre-wrap; word-break: break-all; }
+      .uninstall-cmd { font-size: 0.7rem; white-space: pre-wrap; word-break: break-all; }
+      .tools-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .compare-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .compare-table { min-width: 500px; }
+      .tools-table { min-width: 400px; }
+      .section { padding: 2.5rem 0; }
+      .container { padding: 0 1rem; }
     }
   </style>
 </head>
 <body>
 
+  <canvas id="bg-canvas"></canvas>
+  <div class="page-content">
+
   <!-- Nav -->
   <nav class="nav">
     <div class="container nav-inner">
-      <span class="nav-logo">mcp-deploy</span>
+      <span class="nav-logo"><img src="logo.png" alt="mcp-deploy logo"> mcp-deploy</span>
       <ul class="nav-links">
         <li><a href="#how-it-works">How it works</a></li>
         <li><a href="#quick-start">Quick start</a></li>
         <li><a href="#tools">Tools</a></li>
+        <li><a href="#rest-api">REST API</a></li>
         <li><a href="#features">Why mcp-deploy</a></li>
         <li><a href="https://github.com/ddalcu/mcp-deploy"><i class="fa-brands fa-github"></i> GitHub</a></li>
       </ul>
@@ -498,7 +536,7 @@
   <section class="hero">
     <div class="container">
       <h1 class="hero-title">mcp-deploy</h1>
-      <p class="hero-tagline">The most lightweight PaaS on the planet. Deploy Docker containers to your VPS from any MCP client. No dashboard, no database, no bloat.</p>
+      <p class="hero-tagline">The most lightweight PaaS on the planet. Deploy Docker containers to your VPS from any MCP client. No database, no bloat &ndash; just deploy.</p>
       <div class="hero-install">
         <code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | bash</code>
         <button class="copy-btn" id="copy-btn" title="Copy to clipboard"><i class="fa-regular fa-copy"></i></button>
@@ -558,7 +596,7 @@
                                        <span class="diag-server">└─────────────────────────────────────┘</span></div>
       <ul class="arch-bullets">
         <li><strong>Traefik</strong> handles SSL (automatic per-subdomain Let's Encrypt certs) and routes each subdomain to the right container</li>
-        <li><strong>MCP Server</strong> receives tool calls over Streamable HTTP and manages Docker containers</li>
+        <li><strong>MCP Server</strong> receives tool calls over Streamable HTTP, exposes a REST API for CI/CD, and includes a built-in dashboard</li>
         <li><strong>No database</strong> &ndash; Docker is the source of truth. No JSON state files, no sync issues</li>
         <li><strong>No registry required</strong> &ndash; push images directly from your machine, or pull from GHCR / DockerHub</li>
       </ul>
@@ -579,7 +617,7 @@
         <div class="step">
           <div class="step-number">2</div>
           <h3>Install on your VPS</h3>
-          <p>SSH in and run the one-line installer. It sets up Traefik, the MCP server, and generates your API key.</p>
+          <p>SSH in and run the one-line installer. It sets up Traefik, the MCP server, and generates your API key. You can choose to expose the server via domain, direct port, or both.</p>
           <pre>curl -fsSL https://raw.githubusercontent.com/ddalcu/mcp-deploy/main/install.sh | bash</pre>
         </div>
         <div class="step">
@@ -596,6 +634,8 @@
           <p>Open any project and say <em>"Deploy nginx:alpine as hello"</em>. Visit the URL &ndash; it's live with SSL.</p>
         </div>
       </div>
+      <p class="uninstall-note">Upgrade to the latest version:</p>
+      <pre class="uninstall-cmd">cd /opt/mcp-deploy && docker compose pull && docker compose up -d</pre>
       <p class="uninstall-note">Don't like it? Uninstalling is just as simple:</p>
       <pre class="uninstall-cmd">cd /opt/mcp-deploy && docker compose down -v && rm -rf /opt/mcp-deploy && docker network rm web</pre>
     </div>
@@ -630,6 +670,48 @@
     </div>
   </section>
 
+  <!-- REST API -->
+  <section class="section" id="rest-api">
+    <div class="container">
+      <h2 class="section-title">REST API</h2>
+      <p class="section-subtitle">Every MCP tool is also available as a REST endpoint, so you can deploy from GitHub Actions, scripts, or any HTTP client.</p>
+      <div class="tools-table-wrap">
+        <table class="tools-table">
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>POST /api/deploy</td><td>Deploy or redeploy a Docker image</td></tr>
+            <tr><td>GET /api/apps</td><td>List all managed deployments</td></tr>
+            <tr><td>GET /api/apps/:name</td><td>Detailed app info &ndash; CPU, memory, uptime</td></tr>
+            <tr><td>GET /api/apps/:name/logs</td><td>Get container logs</td></tr>
+            <tr><td>POST /api/apps/:name/stop</td><td>Stop a running app</td></tr>
+            <tr><td>POST /api/apps/:name/start</td><td>Start a stopped app</td></tr>
+            <tr><td>DELETE /api/apps/:name</td><td>Permanently remove an app</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="step" style="margin-top: 1.5rem;">
+        <h3>Example: Deploy from a script</h3>
+        <pre>curl -X POST https://mcp.deploy.example.com/api/deploy \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "my-api", "image": "nginx:alpine"}'</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dashboard -->
+  <section class="section" id="dashboard">
+    <div class="container">
+      <h2 class="section-title">Built-in dashboard</h2>
+      <p class="section-subtitle">Visit your MCP server URL in a browser to see all your deployments, their status, resource usage, and logs &ndash; no extra setup needed. Just log in with your API key.</p>
+    </div>
+  </section>
+
   <!-- Features -->
   <section class="section" id="features">
     <div class="container">
@@ -660,6 +742,11 @@
           <div class="feature-icon"><i class="fa-solid fa-bolt"></i></div>
           <h3>One-line install</h3>
           <p>One curl, two questions, done. No 15-minute setup wizards, no provisioning steps, no prerequisites.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon"><i class="fa-solid fa-gauge-high"></i></div>
+          <h3>Dashboard + REST API</h3>
+          <p>Built-in web dashboard to monitor apps. REST API for CI/CD &ndash; deploy from GitHub Actions or scripts.</p>
         </div>
         <div class="feature">
           <div class="feature-icon"><i class="fa-solid fa-server"></i></div>
@@ -716,6 +803,12 @@
               <td>Some</td>
               <td class="check">Yes</td>
             </tr>
+            <tr>
+              <td>REST API for CI/CD</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+              <td class="check">Yes</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -730,9 +823,11 @@
         <li><a href="https://github.com/ddalcu/mcp-deploy#quick-start"><i class="fa-solid fa-book"></i> Docs</a></li>
         <li><a href="https://github.com/ddalcu/mcp-deploy/issues"><i class="fa-solid fa-circle-exclamation"></i> Issues</a></li>
       </ul>
-      <p>MIT License &copy; 2025 mcp-deploy</p>
+      <p>MIT License &copy; 2025&ndash;2026 mcp-deploy</p>
     </div>
   </footer>
+
+  </div><!-- /.page-content -->
 
   <!-- Image Modal -->
   <div class="modal-overlay" id="modal">
@@ -767,6 +862,133 @@
         setTimeout(function() { btn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
       });
     });
+  </script>
+
+  <!-- Three.js Particle Background -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+  (function() {
+    var canvas = document.getElementById('bg-canvas');
+    var renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    var scene = new THREE.Scene();
+    var fov = 50;
+    var camZ = 3.2;
+    var camera = new THREE.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.z = camZ;
+
+    // Build container particle positions
+    var isMobile = window.innerWidth < 768;
+    var positions = [];
+
+    // Width spans full viewport, height is ~40% of width (container proportions)
+    var vFov = fov * Math.PI / 180;
+    var viewH = 2 * Math.tan(vFov / 2) * camZ;
+    var W = viewH * (window.innerWidth / window.innerHeight);
+    var H = W * 0.4;
+    var D = H;
+
+    // Faces — sample points on 6 faces
+    var faceCount = isMobile ? 2500 : 5000;
+    for (var i = 0; i < faceCount; i++) {
+      var face = Math.floor(Math.random() * 6);
+      var u = Math.random() - 0.5;
+      var v = Math.random() - 0.5;
+      switch (face) {
+        case 0: positions.push(u * W, v * H,  D / 2); break;
+        case 1: positions.push(u * W, v * H, -D / 2); break;
+        case 2: positions.push(u * W,  H / 2, v * D); break;
+        case 3: positions.push(u * W, -H / 2, v * D); break;
+        case 4: positions.push( W / 2, u * H, v * D); break;
+        case 5: positions.push(-W / 2, u * H, v * D); break;
+      }
+    }
+
+    // Edges — dense particles along 12 edges for structural look
+    var edgeCount = isMobile ? 80 : 160;
+    var corners = [
+      [-W/2, -H/2, -D/2], [ W/2, -H/2, -D/2], [ W/2,  H/2, -D/2], [-W/2,  H/2, -D/2],
+      [-W/2, -H/2,  D/2], [ W/2, -H/2,  D/2], [ W/2,  H/2,  D/2], [-W/2,  H/2,  D/2]
+    ];
+    var edges = [
+      [0,1],[1,2],[2,3],[3,0],
+      [4,5],[5,6],[6,7],[7,4],
+      [0,4],[1,5],[2,6],[3,7]
+    ];
+    for (var e = 0; e < edges.length; e++) {
+      var a = corners[edges[e][0]], b = corners[edges[e][1]];
+      for (var j = 0; j <= edgeCount; j++) {
+        var t = j / edgeCount;
+        positions.push(
+          a[0] + (b[0] - a[0]) * t,
+          a[1] + (b[1] - a[1]) * t,
+          a[2] + (b[2] - a[2]) * t
+        );
+      }
+    }
+
+    // Container ridges (vertical lines on sides, like corrugation)
+    var ridgeCount = isMobile ? 40 : 80;
+    var ridges = 12;
+    for (var r = 0; r < ridges; r++) {
+      var rx = -W / 2 + (W / (ridges + 1)) * (r + 1);
+      // Front and back face ridges
+      for (var j = 0; j <= ridgeCount; j++) {
+        var t = j / ridgeCount;
+        var ry = -H / 2 + H * t;
+        positions.push(rx, ry,  D / 2);
+        positions.push(rx, ry, -D / 2);
+      }
+    }
+
+    var geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+    var material = new THREE.PointsMaterial({
+      color: 0x1a3a5c,
+      size: isMobile ? 0.025 : 0.035,
+      transparent: true,
+      opacity: 0.35,
+      sizeAttenuation: true
+    });
+
+    var points = new THREE.Points(geometry, material);
+    points.rotation.x = 0.3;
+    scene.add(points);
+
+    // Scroll-driven rotation
+    var lastScroll = -1;
+    var scrollY = 0;
+
+    window.addEventListener('scroll', function() {
+      scrollY = window.pageYOffset;
+    }, { passive: true });
+
+    function render() {
+      requestAnimationFrame(render);
+      if (scrollY === lastScroll) return;
+      lastScroll = scrollY;
+
+      var maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      var progress = maxScroll > 0 ? scrollY / maxScroll : 0;
+      points.rotation.y = progress * Math.PI * 2;
+
+      renderer.render(scene, camera);
+    }
+
+    // Initial render
+    renderer.render(scene, camera);
+    render();
+
+    window.addEventListener('resize', function() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.render(scene, camera);
+    });
+  })();
   </script>
 
 </body>

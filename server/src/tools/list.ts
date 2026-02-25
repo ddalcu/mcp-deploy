@@ -3,6 +3,18 @@ import { z } from "zod";
 import { getManagedContainers, NAME_LABEL } from "../docker.ts";
 import { config } from "../config.ts";
 
+export async function listApps(status?: string) {
+  const dockerStatus = !status || status === "all" ? undefined : status === "stopped" ? "exited" : status;
+  const containers = await getManagedContainers(dockerStatus);
+
+  return containers.map((c) => ({
+    name: c.Labels[NAME_LABEL] || "unknown",
+    state: c.State,
+    image: c.Image,
+    url: `https://${c.Labels[NAME_LABEL] || "unknown"}.${config.domain}`,
+  }));
+}
+
 export function registerListTool(server: McpServer) {
   server.registerTool(
     "list",
@@ -17,22 +29,15 @@ export function registerListTool(server: McpServer) {
       }),
     },
     async ({ status }) => {
-      const containers = await getManagedContainers(status === "all" ? undefined : status === "stopped" ? "exited" : status);
+      const apps = await listApps(status);
 
-      if (containers.length === 0) {
+      if (apps.length === 0) {
         return { content: [{ type: "text" as const, text: "No deployments found." }] };
       }
 
-      const lines = containers.map((c) => {
-        const name = c.Labels[NAME_LABEL] || "unknown";
-        const state = c.State;
-        const image = c.Image;
-        const url = `https://${name}.${config.domain}`;
-        return `${name} | ${state} | ${image} | ${url}`;
-      });
-
       const header = "Name | Status | Image | URL";
       const separator = "--- | --- | --- | ---";
+      const lines = apps.map((a) => `${a.name} | ${a.state} | ${a.image} | ${a.url}`);
       return {
         content: [{ type: "text" as const, text: [header, separator, ...lines].join("\n") }],
       };

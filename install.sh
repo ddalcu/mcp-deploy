@@ -13,6 +13,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
+DIM='\033[2m'
 NC='\033[0m'
 
 info()  { echo -e "${CYAN}[info]${NC} $1"; }
@@ -85,6 +86,27 @@ echo ""
 prompt DOMAIN    "Base domain — without * or leading dot (e.g. deploy.example.com)"
 prompt ACME_EMAIL "Email for Let's Encrypt"
 
+echo ""
+info "How should the MCP server be accessible?"
+echo -e "  ${BOLD}1)${NC} Domain only  — via mcp.${DOMAIN} (HTTPS through Traefik) ${DIM}[default]${NC}"
+echo -e "  ${BOLD}2)${NC} Port only    — via IP:PORT (HTTP, no Traefik for MCP server)"
+echo -e "  ${BOLD}3)${NC} Both         — domain + direct port"
+echo ""
+read -rp "$(echo -e "${BOLD}Choose [1/2/3]${NC}: ")" EXPOSE_MODE </dev/tty
+EXPOSE_MODE=${EXPOSE_MODE:-1}
+
+DIRECT_PORT=""
+MCP_TRAEFIK=""
+if [[ "$EXPOSE_MODE" == "2" || "$EXPOSE_MODE" == "3" ]]; then
+  read -rp "$(echo -e "${BOLD}Direct API port (e.g. 8080)${NC}: ")" DIRECT_PORT </dev/tty
+  while [[ -z "$DIRECT_PORT" ]]; do
+    read -rp "$(echo -e "${BOLD}Port is required for this mode (e.g. 8080)${NC}: ")" DIRECT_PORT </dev/tty
+  done
+fi
+if [[ "$EXPOSE_MODE" == "2" ]]; then
+  MCP_TRAEFIK="false"
+fi
+
 # --- Generate secrets ---
 
 API_KEY=$(openssl rand -hex 32)
@@ -110,6 +132,28 @@ ACME_EMAIL=$ACME_EMAIL
 API_KEY=$API_KEY
 EOF
 
+if [[ -n "$MCP_TRAEFIK" ]]; then
+  echo "MCP_TRAEFIK=$MCP_TRAEFIK" >> .env
+fi
+
+if [[ -n "$DIRECT_PORT" ]]; then
+  echo "DIRECT_PORT=$DIRECT_PORT" >> .env
+  cat > docker-compose.override.yml <<EOF
+services:
+  mcp-server:
+    ports:
+      - "${DIRECT_PORT}:3000"
+EOF
+fi
+
+if [[ "$EXPOSE_MODE" == "2" ]]; then
+  ok "MCP server exposed on port ${DIRECT_PORT} only (Traefik disabled for MCP server)"
+elif [[ "$EXPOSE_MODE" == "3" ]]; then
+  ok "MCP server exposed via Traefik + direct port ${DIRECT_PORT}"
+else
+  ok "MCP server exposed via Traefik only"
+fi
+
 chmod 600 .env
 ok "Configuration saved to $INSTALL_DIR/.env"
 
@@ -128,8 +172,23 @@ echo -e "${GREEN}${BOLD}============================================${NC}"
 echo -e "${GREEN}${BOLD}  mcp-deploy installed successfully!${NC}"
 echo -e "${GREEN}${BOLD}============================================${NC}"
 echo ""
-echo -e "${BOLD}MCP Server:${NC}  https://mcp.${DOMAIN}/mcp"
-echo -e "${BOLD}Health:${NC}      https://mcp.${DOMAIN}/health"
+if [[ "$EXPOSE_MODE" == "2" ]]; then
+  MCP_URL="http://${VPS_IP}:${DIRECT_PORT}/mcp"
+  UPLOAD_URL="http://${VPS_IP}:${DIRECT_PORT}/upload"
+  echo -e "${BOLD}MCP Server:${NC}  ${MCP_URL}"
+  echo -e "${BOLD}Health:${NC}      http://${VPS_IP}:${DIRECT_PORT}/health"
+  echo -e "${BOLD}REST API:${NC}    http://${VPS_IP}:${DIRECT_PORT}/api"
+  echo -e "${BOLD}Dashboard:${NC}   http://${VPS_IP}:${DIRECT_PORT}"
+else
+  MCP_URL="https://mcp.${DOMAIN}/mcp"
+  UPLOAD_URL="https://mcp.${DOMAIN}/upload"
+  echo -e "${BOLD}MCP Server:${NC}  ${MCP_URL}"
+  echo -e "${BOLD}Health:${NC}      https://mcp.${DOMAIN}/health"
+  echo -e "${BOLD}Dashboard:${NC}   https://mcp.${DOMAIN}"
+  if [[ -n "$DIRECT_PORT" ]]; then
+    echo -e "${BOLD}REST API:${NC}    http://${VPS_IP}:${DIRECT_PORT}/api"
+  fi
+fi
 echo -e "${BOLD}API Key:${NC}     ${API_KEY}"
 echo ""
 echo -e "${BOLD}Add this to your MCP client config:${NC}"
@@ -139,7 +198,7 @@ cat <<MCPCONFIG
   "mcpServers": {
     "deploy-$(echo "$DOMAIN" | cut -d. -f1)": {
       "type": "streamable-http",
-      "url": "https://mcp.${DOMAIN}/mcp",
+      "url": "${MCP_URL}",
       "headers": {
         "Authorization": "Bearer ${API_KEY}"
       }
@@ -149,7 +208,7 @@ cat <<MCPCONFIG
 MCPCONFIG
 echo ""
 echo -e "${BOLD}Push images directly (no registry needed):${NC}"
-echo "  docker save myapp:latest | curl -X POST -T - -H 'Authorization: Bearer ${API_KEY}' https://mcp.${DOMAIN}/upload"
+echo "  docker save myapp:latest | curl -X POST -T - -H 'Authorization: Bearer ${API_KEY}' ${UPLOAD_URL}"
 echo ""
 # --- DNS verification ---
 

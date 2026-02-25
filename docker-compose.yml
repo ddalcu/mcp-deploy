@@ -34,7 +34,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
-      - "traefik.enable=true"
+      - "traefik.enable=${MCP_TRAEFIK:-true}"
       - "traefik.http.routers.mcp-server.rule=Host(`mcp.${DOMAIN}`)"
       - "traefik.http.routers.mcp-server.entrypoints=websecure"
       - "traefik.http.routers.mcp-server.tls.certresolver=letsencrypt"

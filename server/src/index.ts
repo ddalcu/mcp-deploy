@@ -16,6 +16,8 @@ import { registerStartTool } from "./tools/start.ts";
 import { registerRemoveTool } from "./tools/remove.ts";
 import { registerStatusTool } from "./tools/status.ts";
 import { registerUploadImageTool } from "./tools/upload-image.ts";
+import { apiRouter } from "./api.ts";
+import { getDashboardHtml } from "./dashboard.ts";
 
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
 
@@ -135,27 +137,15 @@ app.post("/deploy-static/:name", requireAuth, (req, res) => {
   });
 });
 
+// REST API for CI/CD (GitHub Actions, scripts, etc.)
+app.use("/api", apiRouter);
+
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", version: "1.0.0" });
 });
 
 app.get("/", (_req, res) => {
-  res.type("html").send(`<!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>mcp-deploy</title>
-<style>
-  body { font-family: system-ui, sans-serif; max-width: 480px; margin: 80px auto; padding: 0 20px; color: #333; }
-  h1 { font-size: 1.4rem; }
-  code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
-  a { color: #0969da; }
-</style>
-</head><body>
-<h1>mcp-deploy</h1>
-<p>This is an <a href="https://modelcontextprotocol.io">MCP</a> server. Connect to <code>/mcp</code> from Claude Code, Cursor, or any MCP client.</p>
-<p><a href="https://github.com/ddalcu/mcp-deploy">GitHub</a></p>
-</body></html>`);
+  res.type("html").send(getDashboardHtml());
 });
 
 app.listen(config.port, () => {

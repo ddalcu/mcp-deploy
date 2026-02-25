@@ -8,4 +8,5 @@ export const config = {
   port: parseInt(process.env.PORT || "3000", 10),
   domain: required("DOMAIN"),
   apiKey: required("API_KEY"),
+  acmeEnabled: process.env.ACME_ENABLED !== "false",
 };

@@ -4,6 +4,13 @@ import { docker } from "../docker.ts";
 import { config } from "../config.ts";
 import { appName } from "../validation.ts";
 
+export async function startApp(name: string) {
+  const container = docker.getContainer(`mcp-deploy-${name}`);
+  await container.start();
+  const url = `https://${name}.${config.domain}`;
+  return { message: `Started ${name}.`, url };
+}
+
 export function registerStartTool(server: McpServer) {
   server.registerTool(
     "start",
@@ -12,11 +19,9 @@ export function registerStartTool(server: McpServer) {
       inputSchema: z.object({ name: appName }),
     },
     async ({ name }) => {
-      const container = docker.getContainer(`mcp-deploy-${name}`);
-      await container.start();
-      const url = `https://${name}.${config.domain}`;
+      const result = await startApp(name);
       return {
-        content: [{ type: "text" as const, text: `Started ${name}.\nURL: ${url}` }],
+        content: [{ type: "text" as const, text: `${result.message}\nURL: ${result.url}` }],
       };
     }
   );

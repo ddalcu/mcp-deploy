@@ -1,0 +1,82 @@
+# Local development stack — self-signed TLS, source mounting, live reload.
+# Compatible with Docker, Podman, and OrbStack.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up
+#
+# Add to /etc/hosts:
+#   127.0.0.1 mcp.mcp.local
+#
+# Then open https://mcp.mcp.local (accept cert warning) or http://localhost:3000
+#
+# For each deployed app, add:
+#   127.0.0.1 <app-name>.mcp.local
+
+services:
+  traefik:
+    image: traefik:v3.6
+    container_name: mcp-deploy-traefik
+    user: "0"
+    security_opt:
+      - label=disable
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=web
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - web
+
+  mcp-server:
+    image: node:24-alpine
+    container_name: mcp-deploy-server
+    user: "0"
+    security_opt:
+      - label=disable
+    working_dir: /app
+    command:
+      - sh
+      - -c
+      - |
+        npm ci --omit=dev
+        echo ""
+        echo "  Dashboard: http://localhost:3000"
+        echo "  API Key:   $$API_KEY"
+        echo ""
+        node --watch src/index.ts
+    environment:
+      - DOMAIN=${DOMAIN:-mcp.local}
+      - API_KEY=${API_KEY:-devkey}
+      - ACME_ENABLED=false
+    ports:
+      - "3000:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./server/src:/app/src
+      - ./server/package.json:/app/package.json
+      - ./server/package-lock.json:/app/package-lock.json
+      - server-node-modules:/app/node_modules
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp-server.rule=Host(`mcp.${DOMAIN:-mcp.local}`)"
+      - "traefik.http.routers.mcp-server.entrypoints=websecure"
+      - "traefik.http.routers.mcp-server.tls=true"
+      - "traefik.http.routers.mcp-server-http.rule=Host(`mcp.${DOMAIN:-mcp.local}`)"
+      - "traefik.http.routers.mcp-server-http.entrypoints=web"
+      - "traefik.http.services.mcp-server.loadbalancer.server.port=3000"
+    networks:
+      - web
+
+networks:
+  web:
+    name: web
+    driver: bridge
+
+volumes:
+  server-node-modules:

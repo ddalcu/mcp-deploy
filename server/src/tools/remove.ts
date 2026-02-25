@@ -3,6 +3,21 @@ import { z } from "zod";
 import { docker } from "../docker.ts";
 import { appName } from "../validation.ts";
 
+export async function removeApp(name: string, removeVolumes = false) {
+  const containerName = `mcp-deploy-${name}`;
+  const container = docker.getContainer(containerName);
+
+  try {
+    await container.stop();
+  } catch {
+    // Already stopped
+  }
+
+  await container.remove({ v: removeVolumes });
+
+  return { message: `Removed ${name}.${removeVolumes ? " Volumes also removed." : ""}` };
+}
+
 export function registerRemoveTool(server: McpServer) {
   server.registerTool(
     "remove",
@@ -14,19 +29,9 @@ export function registerRemoveTool(server: McpServer) {
       }),
     },
     async ({ name, remove_volumes }) => {
-      const containerName = `mcp-deploy-${name}`;
-      const container = docker.getContainer(containerName);
-
-      try {
-        await container.stop();
-      } catch {
-        // Already stopped
-      }
-
-      await container.remove({ v: remove_volumes });
-
+      const result = await removeApp(name, remove_volumes);
       return {
-        content: [{ type: "text" as const, text: `Removed ${name}.${remove_volumes ? " Volumes also removed." : ""}` }],
+        content: [{ type: "text" as const, text: result.message }],
       };
     }
   );

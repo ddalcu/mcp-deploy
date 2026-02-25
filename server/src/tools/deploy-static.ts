@@ -11,7 +11,8 @@ export function registerDeployStaticTool(server: McpServer) {
         "Deploy static files (HTML, CSS, JS) as a website with automatic SSL. " +
         "Use this for static sites — no Docker image needed. " +
         "For Docker-based apps, use the deploy tool instead. " +
-        "Returns curl commands to upload and deploy the files.",
+        "Returns curl commands to upload and deploy the files. " +
+        "If the folder has no index.html but has exactly one .html file, it will be served as the default page automatically.",
       inputSchema: z.object({ name: appName }),
     },
     async ({ name }) => {

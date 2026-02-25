@@ -53,6 +53,13 @@ export async function deployStaticSite(name: string, tarStream: NodeJS.ReadableS
   } as Docker.ContainerCreateOptions);
 
   await container.start();
+
+  // Clear default nginx files before extracting user's archive
+  const clear = await container.exec({
+    Cmd: ["sh", "-c", "rm -rf /usr/share/nginx/html/*"],
+  });
+  await clear.start({});
+
   await container.putArchive(tarStream, { path: "/usr/share/nginx/html" });
 
   // Clean up: remove macOS AppleDouble files, and create index.html symlink if missing
