@@ -21,6 +21,12 @@ export async function getAppStatus(name: string) {
     url: `https://${name}.${config.domain}`,
   };
 
+  // Show mounted volumes
+  const mounts = info.Mounts?.filter((m: { Type: string }) => m.Type === 'volume') || [];
+  if (mounts.length) {
+    result.volumes = mounts.map((m: { Name: string; Destination: string }) => `${m.Name}:${m.Destination}`).join(', ');
+  }
+
   if (info.State.Running) {
     try {
       const stats = await container.stats({ stream: false });

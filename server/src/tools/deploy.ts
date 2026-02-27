@@ -18,7 +18,7 @@ export const deployInputSchema = z.object({
   volumes: z
     .array(z.string().regex(/^[a-zA-Z0-9_-]+:\//, "Only named volumes allowed (e.g. 'data:/app/data')"))
     .optional()
-    .describe("Named volume mounts (e.g. ['data:/app/data'])"),
+    .describe("Named volume mounts (e.g. ['data:/app/data']). Volume names are auto-prefixed with 'volume-{app}-' to prevent cross-app sharing."),
   command: z.string().optional().describe("Override container command"),
 });
 
@@ -72,7 +72,13 @@ export async function deployApp({ name, image, port: portInput, env, registry_au
   };
 
   if (volumes?.length) {
-    hostConfig.Binds = volumes;
+    // Namespace volume names by app to prevent cross-app data sharing
+    hostConfig.Binds = volumes.map((v) => {
+      const colonIdx = v.indexOf(":");
+      const volName = v.slice(0, colonIdx);
+      const mountPath = v.slice(colonIdx);
+      return `volume-${name}-${volName}${mountPath}`;
+    });
   }
 
   const createOptions: Record<string, unknown> = {
