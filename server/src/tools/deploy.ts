@@ -19,12 +19,16 @@ export const deployInputSchema = z.object({
     .array(z.string().regex(/^[a-zA-Z0-9_-]+:\//, "Only named volumes allowed (e.g. 'data:/app/data')"))
     .optional()
     .describe("Named volume mounts (e.g. ['data:/app/data']). Volume names are auto-prefixed with 'volume-{app}-' to prevent cross-app sharing."),
+  ports: z
+    .array(z.string().regex(/^\d+:\d+$/, "Format: 'hostPort:containerPort' (e.g. '25:2525')"))
+    .optional()
+    .describe("Additional host:container port mappings for non-HTTP traffic (e.g. ['25:2525', '993:9933']). These bind directly on the host, bypassing Traefik."),
   command: z.string().optional().describe("Override container command"),
 });
 
 export type DeployInput = z.infer<typeof deployInputSchema>;
 
-export async function deployApp({ name, image, port: portInput, env, registry_auth, volumes, command }: DeployInput) {
+export async function deployApp({ name, image, port: portInput, env, registry_auth, volumes, ports, command }: DeployInput) {
   const containerName = `mcp-deploy-${name}`;
 
   // Use local image if available (also checks localhost/ prefix for podman-uploaded images), otherwise pull
@@ -79,6 +83,15 @@ export async function deployApp({ name, image, port: portInput, env, registry_au
       const mountPath = v.slice(colonIdx);
       return `volume-${name}-${volName}${mountPath}`;
     });
+  }
+
+  if (ports?.length) {
+    const portBindings: Record<string, Array<{ HostPort: string }>> = {};
+    for (const mapping of ports) {
+      const [hostPort, containerPort] = mapping.split(":");
+      portBindings[`${containerPort}/tcp`] = [{ HostPort: hostPort }];
+    }
+    hostConfig.PortBindings = portBindings;
   }
 
   const createOptions: Record<string, unknown> = {
